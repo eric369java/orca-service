@@ -4,7 +4,7 @@ from fastapi import WebSocket
 from sqlmodel import Session, select
 from .utilities import are_dates_in_same_week, get_start_date_of_week
 from ..websocket.connectionManager import ConnectionManager
-from ..websocket.protocols import ServerMessage
+from ..websocket.protocols import Response
 from database.models import Schedule, ScheduleBookmark, Activity
 
 class ScheduleConnectionManager(ConnectionManager):
@@ -14,7 +14,7 @@ class ScheduleConnectionManager(ConnectionManager):
         self.client_schedule_connection = {}
         
         # The start of the week the user is on.
-        self.current_week = {}
+        self.target_week = {}
 
     async def connect(self, websocket: WebSocket, client_id: str, schedule_id: str) -> bool:
         await super().connect(websocket, client_id)
@@ -27,7 +27,7 @@ class ScheduleConnectionManager(ConnectionManager):
             ScheduleBookmark.schedule_id == schedule_id).limit(1)).one_or_none()
         
         if not week_start_db:
-            # Determine the current_week from the earliest activity in the schedule
+            # Determine the target_week from the earliest activity in the schedule
             earliest_start_db = self.db_session.exec(select(Activity.start).where(Activity.schedule_id == schedule_id) \
                 .order_by(Activity.start).limit(1)).one_or_none()
 
@@ -36,11 +36,11 @@ class ScheduleConnectionManager(ConnectionManager):
                 if not schedule_start_db:
                     return False
                 else:
-                    self.current_week[client_id] = get_start_date_of_week(schedule_start_db)
+                    self.target_week[client_id] = get_start_date_of_week(schedule_start_db)
             else:
-                self.current_week[client_id] = get_start_date_of_week(earliest_start_db)
+                self.target_week[client_id] = get_start_date_of_week(earliest_start_db)
         else:
-            self.current_week[client_id] = week_start_db
+            self.target_week[client_id] = week_start_db
         
         return True
     
@@ -54,33 +54,33 @@ class ScheduleConnectionManager(ConnectionManager):
                 ScheduleBookmark.schedule_id == schedule_id)).one_or_none()
             
             if not schedule_bookmark_db:
-                # Use the client's last known current_week's activities to determine timezone
-                current_week = self.current_week[client_id]
-                current_week_end = current_week + timedelta(weeks=1)
+                # Use the client's last known target_week's activities to determine timezone
+                target_week = self.target_week[client_id]
+                target_week_end = target_week + timedelta(weeks=1)
                 time_zone_offset_db = self.db_session.exec(select(Activity.local_timezone).where(Activity.schedule_id == schedule_id, \
-                    Activity.start > current_week, Activity.end < current_week_end).order_by(Activity.start).limit(1)).one_or_none()
+                    Activity.start > target_week, Activity.end < target_week_end).order_by(Activity.start).limit(1)).one_or_none()
 
                 if not time_zone_offset_db:
                     time_zone_offset_db = self.db_session.exec(select(Schedule.init_timezone_offset).where(Schedule.id == schedule_id)).one()
 
-                new_last_visited = ScheduleBookmark(user_id=client_id, schedule_id=schedule_id, week_start=current_week, week_start_timezone_offset=time_zone_offset_db)
+                new_last_visited = ScheduleBookmark(user_id=client_id, schedule_id=schedule_id, week_start=target_week, week_start_timezone_offset=time_zone_offset_db)
                 self.db_session.add(new_last_visited)
                 self.db_session.commit()
             else:
-                schedule_bookmark_db.week_start = self.current_week[client_id]
+                schedule_bookmark_db.week_start = self.target_week[client_id]
                 self.db_session.add(schedule_bookmark_db)
                 self.db_session.commit() 
 
         # Disconnect the client from the schedule
         del self.client_schedule_connection[client_id]
-        del self.current_week[client_id]
+        del self.target_week[client_id]
     
-    async def send_message_to_pool(self, schedule_id: str, message: ServerMessage):
+    async def send_response_to_pool(self, schedule_id: str, response: Response):
         # Notify all clients that are connected to the schedule and are currently viewing the week
         # that's being updated
         for client_id, conn_schedule_id in self.client_schedule_connection.items():
-            if conn_schedule_id == schedule_id and are_dates_in_same_week(message.current_week, self.current_week[client_id]):
-                await self.active_connections[client_id].send_text(message.dump())
+            if conn_schedule_id == schedule_id and are_dates_in_same_week(response.target_week, self.target_week[client_id]):
+                await self.active_connections[client_id].send_text(response.dump())
 
-    def update_client_current_week(self, client_id: str, current_week: datetime):
-        self.current_week[client_id] = current_week
+    def update_client_target_week(self, client_id: str, target_week: datetime):
+        self.target_week[client_id] = target_week

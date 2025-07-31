@@ -28,6 +28,7 @@ class Activity(SQLModel, table=True):
     location: str = Field(nullable=False)
     local_timezone: int = Field(default=0, nullable=False) # timezone +/- hours from UTC
     dest_location : str | None = Field(nullable=True) # only populated if type = transit.
+    version : int = Field(nullable=False, default=0)
 
 class ActivityDescription(SQLModel, table=True):
     activity_id: uuid_pkg.UUID = Field(nullable=False, primary_key=True, foreign_key='activity.id')

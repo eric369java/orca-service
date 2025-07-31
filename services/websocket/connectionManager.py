@@ -1,6 +1,6 @@
 from fastapi import WebSocket
 
-from services.websocket.protocols import ServerMessage
+from services.websocket.protocols import Response
 
 class ConnectionManager:
     def __init__(self):
@@ -13,7 +13,7 @@ class ConnectionManager:
     def disconnect(self, client_id: str) -> None:
         del self.active_connections[client_id]
         
-    async def send_message(self, client_ids: list[str], message: ServerMessage) -> None:
+    async def send_response(self, client_ids: list[str], response : Response) -> None:
         for client_id in client_ids:
             if client_id in self.active_connections:
-                await self.active_connections[client_id].send_text(message.dump())
+                await self.active_connections[client_id].send_text(response.dump())
