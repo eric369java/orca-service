@@ -3,14 +3,14 @@ from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from sqlmodel import Session
 
 from ..websocket.responseStatus import ResponseStatus
-from ..websocket.protocols import Request, Response
+from .requestActions import RequestActions
+from ..websocket.protocols import Request
 from database.database import get_session
 from .scheduleService import ScheduleService
 from .scheduleConnManager import ScheduleConnectionManager
 
 router = APIRouter(prefix="/v1/schedule")
 
-# TODO: Authentication
 @router.websocket("/{schedule_id}/{client_id}")
 async def schedule_websocket(websocket: WebSocket, schedule_id: str, client_id: str, db_session: Session = Depends(get_session)):
     websocket_manager = ScheduleConnectionManager(db_session)
@@ -29,13 +29,13 @@ async def schedule_websocket(websocket: WebSocket, schedule_id: str, client_id: 
             response = None
             
             client_request = Request(client_json)
-            if client_request.action == "GETWEEK":
+            if client_request.action == RequestActions.GetWeekOfActivities:
                 websocket_manager.update_client_target_week(client_request.client_id, client_request.target_week)
 
             response = schedule_service.get_response(schedule_id, client_request)
             if not response or response.status != ResponseStatus.SUCCESS:
                 await websocket_manager.send_response([client_id], response)
-            elif response.action == "GETWEEK":
+            elif response.action == RequestActions.GetWeekOfActivities or response.action == RequestActions.GetActivity:
                 await websocket_manager.send_response([client_id], response)
             else:
                 await websocket_manager.send_response_to_pool(schedule_id, response)

@@ -4,7 +4,7 @@ from fastapi import WebSocket
 from sqlmodel import Session, select
 from .utilities import are_dates_in_same_week, get_start_date_of_week
 from ..websocket.connectionManager import ConnectionManager
-from ..websocket.protocols import Response
+from ..websocket.protocols import ResponseBase
 from database.models import Schedule, ScheduleBookmark, Activity
 
 class ScheduleConnectionManager(ConnectionManager):
@@ -75,7 +75,7 @@ class ScheduleConnectionManager(ConnectionManager):
         del self.client_schedule_connection[client_id]
         del self.target_week[client_id]
     
-    async def send_response_to_pool(self, schedule_id: str, response: Response):
+    async def send_response_to_pool(self, schedule_id: str, response: ResponseBase):
         # Notify all clients that are connected to the schedule and are currently viewing the week
         # that's being updated
         for client_id, conn_schedule_id in self.client_schedule_connection.items():

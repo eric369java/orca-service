@@ -3,12 +3,24 @@ import json
 from datetime import datetime
 from database.models import Activity
 
-class Response:
-    def __init__(self, status: int, action: str, target_week : datetime, activities : list[Activity] = [], request_id : str | None = None):
+class ResponseBase: 
+    def __init__(self, status: int, action: str, request_id : str | None = None):
         self.status = status
         self.action = action
-        self.target_week = target_week
         self.request_id = request_id
+
+    def dump(self):
+        obj_dict = {
+            "status" : self.status.value,
+            "action" : self.action,
+            "request_id" : self.request_id,
+        }
+        return json.dumps(obj_dict)
+
+class ActivityResponse(ResponseBase):
+    def __init__(self, status: int, action: str, target_week : datetime, activities : list[Activity] = [], request_id : str | None = None):
+        super().__init__(status, action, request_id)
+        self.target_week = target_week
         self.activities = activities
 
     def dump(self):
@@ -23,6 +35,23 @@ class Response:
         for activity in self.activities:
             activities.append(activity.model_dump(mode='json'))
         obj_dict["activities"] = activities
+
+        return json.dumps(obj_dict)
+
+class DescriptionResponse(ResponseBase):
+    def __init__(self, status : int, action : str, activity_id : str, description : str = '', request_id : str | None = None):
+        super().__init__(status, action, request_id)
+        self.activity_id = activity_id
+        self.description = description
+
+    def dump(self):
+        obj_dict = {
+            "status" : self.status.value,
+            "action" : self.action,
+            "request_id" : self.request_id,
+            "activity_id" : self.activity_id,
+            "description" : self.description
+        }
 
         return json.dumps(obj_dict)
 
