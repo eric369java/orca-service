@@ -1,8 +1,8 @@
 from enum import Enum
 
-class RequestActions(Enum):
-    GetActivity = "GET",
-    CreateActivity = "POST",
+class RequestActions(str, Enum):
+    GetActivity = "GET"
+    CreateActivity = "POST"
     UpdateActivity = "PATCH"
     DeleteActivity = "DELETE"
     GetWeekOfActivities = "FULLWEEK"

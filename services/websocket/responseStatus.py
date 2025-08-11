@@ -1,6 +1,6 @@
 from enum import Enum
 
-class ResponseStatus(Enum):
+class ResponseStatus(int, Enum):
     SUCCESS = 200
     UNAUTHORIZED = 401
     NOT_FOUND = 404

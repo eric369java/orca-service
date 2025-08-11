@@ -11,7 +11,7 @@ class ResponseBase:
 
     def dump(self):
         obj_dict = {
-            "status" : self.status.value,
+            "status" : self.status,
             "action" : self.action,
             "request_id" : self.request_id,
         }
@@ -25,7 +25,7 @@ class ActivityResponse(ResponseBase):
 
     def dump(self):
         obj_dict = {
-            "status" : self.status.value,
+            "status" : self.status,
             "action" : self.action,
             "target_week" : self.target_week.isoformat(),
             "request_id" : self.request_id,
@@ -46,7 +46,7 @@ class DescriptionResponse(ResponseBase):
 
     def dump(self):
         obj_dict = {
-            "status" : self.status.value,
+            "status" : self.status,
             "action" : self.action,
             "request_id" : self.request_id,
             "activity_id" : self.activity_id,
